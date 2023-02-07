@@ -64,6 +64,18 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
              }
         )
 
+        # only artist with empty string as id
+        self.client.index(
+             index='songs',
+             id='99-problems-null',
+             body={
+                'title': '99 Problems',
+                'artists': [
+                    {'name': 'Jay-Z', 'id': ''},
+                ]
+             }
+        )
+
         # no artist
         self.client.index(
              index='songs',
@@ -88,6 +100,38 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
         )
         hits = [hit['_id'] for hit in result['hits']['hits']]
         self.assertEqual(hits, ['numb', 'numb-encore'])
+
+    def test_exclude_songs_when_none_of_the_artists_have_id(self):
+        result = self.client.search(
+            index='songs',
+            body={
+                'query': {
+                    'bool': {
+                        'must': [
+                            { 'exists': {'field': 'artists.id' } },
+                            { 'regexp': {'artists.id': '.+'} },
+                        ]
+                    }
+                }
+            }
+        )
+        hits = [hit['_id'] for hit in result['hits']['hits']]
+        self.assertEqual(hits, ['numb', 'numb-encore', 'lying-from-you'])
+
+    def test_exclude_songs_when_any_artists_does_not_have_id(self):
+        result = self.client.search(
+            index='songs',
+            body={
+                'query': {
+                    'bool': {
+                    }
+                }
+            }
+        )
+        hits = [hit['_id'] for hit in result['hits']['hits']]
+        self.assertEqual(hits, ['numb', 'lying-from-you'])
+
+
 
 if __name__ == '__main__':
     unittest.main()
