@@ -12,25 +12,82 @@ class ElasticMixin:
 
 class TestElasticQueries(ElasticMixin, unittest.TestCase):
 
-    def test_simple_query(self):
+    def setUp(self):
+        super().setUp()
+        # single artist with ID
         self.client.index(
-             index='lord-of-the-rings',
-             id='aragorn',
+             index='songs',
+             id='numb',
              body={
-                'character': 'Aragon',
-                'quote': 'It is not this day.'
+                'title': 'Numb',
+                'artists': [
+                    {'name': 'Linkin Park', 'id': 'lp'}
+                ]
              }
         )
+
+        # some artists have id
+        self.client.index(
+             index='songs',
+             id='numb-encore',
+             body={
+                'title': 'Numb Encore',
+                'artists': [
+                    {'name': 'Linkin Park', 'id': 'lp'},
+                    {'name': 'Jay-Z'},
+                ]
+             }
+        )
+
+        # all artists with id
+        self.client.index(
+             index='songs',
+             id='lying-from-you',
+             body={
+                'title': 'Lying From You',
+                'artists': [
+                    {'name': 'Linkin Park', 'id': 'lp'},
+                    {'name': 'Eminem', 'id': 'emn'},
+                ]
+             }
+        )
+
+        # only artist without id
+        self.client.index(
+             index='songs',
+             id='99-problems',
+             body={
+                'title': '99 Problems',
+                'artists': [
+                    {'name': 'Jay-Z'},
+                ]
+             }
+        )
+
+        # no artist
+        self.client.index(
+             index='songs',
+             id='moonlight-sonata',
+             body={
+                'title': 'Moonlight sonata',
+                'artists': []
+             }
+        )
+
         self.client.indices.refresh()
+
+
+    def test_simple_query(self):
         result = self.client.search(
-            index='lord-of-the-rings',
+            index='songs',
             body={
                 'query': {
-                    'match': {'quote': 'day'}
+                    'match': {'title': 'numb'}
                 }
             }
         )
-        print(result['hits']['hits'])
+        hits = [hit['_id'] for hit in result['hits']['hits']]
+        self.assertEqual(hits, ['numb', 'numb-encore'])
 
 if __name__ == '__main__':
     unittest.main()
