@@ -6,6 +6,7 @@ class ElasticMixin:
     def setUp(self):
         self.client = Elasticsearch("http://localhost:9200")
         self.client.indices.delete(index='_all')
+        self.songs = {}
 
     def tearDown(self):
         pass
@@ -17,77 +18,55 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
     def setUp(self):
         super().setUp()
         # single artist with ID
-        self.client.index(
-             index='songs',
-             id='numb',
-             body={
-                'title': 'Numb',
-                'artists': [
-                    {'name': 'Linkin Park', 'id': 'lp'}
-                ]
-             }
-        )
+        self.songs['numb'] = {
+            'title': 'Numb',
+            'artists': [
+                {'name': 'Linkin Park', 'id': 'lp'}
+            ]
+        }
 
         # some artists have id
-        self.client.index(
-             index='songs',
-             id='numb-encore',
-             body={
-                'title': 'Numb Encore',
-                'artists': [
-                    {'name': 'Linkin Park', 'id': 'lp'},
-                    {'name': 'Jay-Z'},
-                ]
-             }
-        )
+        self.songs['numb-encore'] = {
+            'title': 'Numb Encore',
+            'artists': [
+                {'name': 'Linkin Park', 'id': 'lp'},
+                {'name': 'Jay-Z'},
+            ]
+        }
 
         # all artists with id
-        self.client.index(
-             index='songs',
-             id='lying-from-you',
-             body={
-                'title': 'Lying From You',
-                'artists': [
-                    {'name': 'Linkin Park', 'id': 'lp'},
-                    {'name': 'Eminem', 'id': 'emn'},
-                ]
-             }
-        )
+        self.songs['lying-from-you'] = {
+            'title': 'Lying From You',
+            'artists': [
+                {'name': 'Linkin Park', 'id': 'lp'},
+                {'name': 'Eminem', 'id': 'emn'},
+            ]
+        }
 
         # only artist without id
-        self.client.index(
-             index='songs',
-             id='99-problems',
-             body={
-                'title': '99 Problems',
-                'artists': [
-                    {'name': 'Jay-Z'},
-                ]
-             }
-        )
+        self.songs['99-problems'] = {
+            'title': '99 Problems',
+            'artists': [
+                {'name': 'Jay-Z'},
+            ]
+        }
 
         # only artist with empty string as id
-        self.client.index(
-             index='songs',
-             id='99-problems-null',
-             body={
-                'title': '99 Problems',
-                'artists': [
-                    {'name': 'Jay-Z', 'id': ''},
-                ]
-             }
-        )
+        self.songs['99-problems-null'] = {
+            'title': '99 Problems',
+            'artists': [
+                {'name': 'Jay-Z', 'id': ''},
+            ]
+        }
 
         # no artist
-        self.client.index(
-             index='songs',
-             id='moonlight-sonata',
-             body={
-                'title': 'Moonlight sonata',
-                'artists': []
-             }
-        )
+        self.songs['moonlight-sonata'] = {
+            'title': 'Moonlight sonata',
+            'artists': []
+        }
 
+        for id, body in self.songs.items():
+            self.client.index(index='songs', id=id, body=body)
         self.client.indices.refresh()
 
 
@@ -102,6 +81,36 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
         )
         hits = self.extract_song_ids(result)
         self.assertEqual(['numb', 'numb-encore'], hits)
+
+    def test_get_all_songs(self):
+        result = self.client.search(
+            index='songs',
+            body={
+                'query': {
+                    'bool': {}
+                }
+            }
+        )
+        hits = self.extract_song_ids(result)
+        self.assertEqual(list(self.songs.keys()), hits)
+
+    def test_exclude_songs_without_any_artists(self):
+        result = self.client.search(
+            index='songs',
+            body={
+                'query': {
+                    'bool': {
+                        'must': [
+                            {'range': { 'artists_count': { 'gt': 0 } }},
+                        ]
+                    }
+                },
+                'runtime_mappings': self.get_runtime_mappings(),
+            }
+        )
+        hits = self.extract_song_ids(result)
+        self.assertEqual(['numb', 'numb-encore', 'lying-from-you', '99-problems', '99-problems-null'], hits)
+
 
     def test_exclude_songs_when_none_of_the_artists_have_id(self):
         result = self.client.search(
