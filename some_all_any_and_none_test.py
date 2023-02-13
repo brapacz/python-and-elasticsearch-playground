@@ -148,10 +148,11 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
         self.assertEqual(['numb', 'lying-from-you'], hits)
 
     def get_runtime_mappings(self):
+
         artists_with_id_count_script = """
             int count = 0;
             for(def artist : params['_source']['artists']) {
-                if(null != artist['id'] || '' != artist['id']) {
+                if( ! (null == artist['id'] || '' == artist['id'])) {
                     count++;
                 }
             }
@@ -159,7 +160,7 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
         """
 
         # same but with different operator
-        artists_without_id_count_script = artists_with_id_count_script.replace(' != ', ' == ')
+        artists_without_id_count_script = artists_with_id_count_script.replace(' ! ', '')
 
         return {
             'artists_with_id_count': {
