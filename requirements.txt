@@ -1,2 +1,2 @@
 docker-compose
-elasticsearch<=7.14.0
+elasticsearch<=7.17.0
