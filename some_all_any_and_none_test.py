@@ -101,7 +101,7 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
                 'query': {
                     'bool': {
                         'must': [
-                            {'range': { 'artists_count': { 'gt': 0 } }},
+                            {'range': { 'artists_count.total': { 'gt': 0 } }},
                         ]
                     }
                 },
@@ -136,8 +136,8 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
                 'query': {
                     'bool': {
                         'must': [
-                            {'range': { 'artists_count': { 'gt': 0 } }},
-                            {'match': { 'artists_without_id_count': 0 }}
+                            {'range': { 'artists_count.total': { 'gt': 0 } }},
+                            {'match': { 'artists_count.without_id': 0 }}
                         ]
                     }
                 },
@@ -149,40 +149,37 @@ class TestElasticQueries(ElasticMixin, unittest.TestCase):
 
     def get_runtime_mappings(self):
 
-        artists_with_id_count_script = """
-            int count = 0;
+        script = """
+            int with_id = 0;
+            int without_id = 0;
+            int total = params['_source']['artists'].size();
+
             for(def artist : params['_source']['artists']) {
-                if( ! (null == artist['id'] || '' == artist['id'])) {
-                    count++;
+                if(null == artist['id'] || '' == artist['id']) {
+                    without_id++;
+                } else {
+                    with_id++;
                 }
             }
-            emit(count);
+
+            emit('with_id', with_id);
+            emit('without_id', without_id);
+            emit('total', total);
         """
 
-        # same but with different operator
-        artists_without_id_count_script = artists_with_id_count_script.replace(' ! ', '')
-
         return {
-            'artists_with_id_count': {
-                'type': 'long',
-                'script': {
-                    'source': artists_with_id_count_script
-                }
-            },
-            'artists_without_id_count': {
-                'type': 'long',
-                'script': {
-                    'source': artists_without_id_count_script
-                }
-            },
-            'artists_count': {
-                'type': 'long',
-                'script': {
-                    'source': """emit(params['_source']['artists'].size())"""
+            "artists_count": {
+                "type": "composite",
+                "script": {
+                    'source': script
+                },
+                "fields": {
+                    "with_id": { "type": "long" },
+                    "without_id": { "type": "long" },
+                    "total": { "type": "long" },
                 }
             }
         }
-
 
 
 if __name__ == '__main__':
