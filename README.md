@@ -1,4 +1,6 @@
-# Purpose?
+# my playground & notebook [![Build Status](https://app.travis-ci.com/brapacz/python-and-elasticsearch-playground.svg?branch=master)](https://app.travis-ci.com/brapacz/python-and-elasticsearch-playground)
+
+## Purpose?
 
 For learning and testing
 
