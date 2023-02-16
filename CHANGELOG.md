@@ -1,5 +1,9 @@
 # Changelog
 
+## 2023-02-16
+
+* Added Travis CI integration.
+
 ## 2023-02-15
 
 * Instead using 3 separated scripts to calculate `with_id`, `without_id` and
