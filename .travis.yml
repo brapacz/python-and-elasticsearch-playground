@@ -1,5 +1,6 @@
 language: python
 install:
   - make setup
+  - make wait-for-elastic
 script:
   - make test
